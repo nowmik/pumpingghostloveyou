@@ -58,21 +58,22 @@
     $(id).textContent = message;
     $(id).hidden = !message;
   }
+  function updateGuestButton() {
+    const extras = document.querySelectorAll('#extraNameFields input').length;
+    $('addGuest').disabled = extras >= 3;
+  }
   function addNameField() {
-    const count = document.querySelectorAll('#nameFields input').length;
-    if (count >= 4) return;
+    const count = document.querySelectorAll('#extraNameFields input').length;
+    if (count >= 3) return;
     const label = document.createElement('label');
-    label.className = 'field';
+    label.className = 'field companion-field';
     const title = document.createElement('span');
-    title.textContent = `동행인 이름 ${String(count + 1).padStart(2, '0')}`;
+    title.textContent = `동행인 ${String(count + 1).padStart(2, '0')}`;
     const remove = document.createElement('button');
     remove.type = 'button';
     remove.className = 'remove-guest';
-    remove.textContent = '삭제';
-    remove.addEventListener('click', () => {
-      label.remove();
-      $('addGuest').disabled = false;
-    });
+    remove.textContent = '삭제 ×';
+    remove.addEventListener('click', () => { label.remove(); updateGuestButton(); });
     title.append(remove);
     const input = document.createElement('input');
     input.type = 'text';
@@ -81,15 +82,15 @@
     input.autocomplete = 'off';
     input.required = true;
     label.append(title, input);
-    $('nameFields').append(label);
-    $('addGuest').disabled = count + 1 >= 4;
+    $('extraNameFields').append(label);
+    updateGuestButton();
     input.focus();
   }
   $('addGuest').addEventListener('click', addNameField);
   $('enterButton').addEventListener('click', () => showStep(2));
   $('guestForm').addEventListener('submit', (event) => {
     event.preventDefault();
-    const names = Array.from(document.querySelectorAll('#nameFields input')).map(el => el.value.trim());
+    const names = [$('primaryGuestName'), ...document.querySelectorAll('#extraNameFields input')].map(el => el.value.trim());
     const digits = $('phoneInput').value.replace(/\D/g, '');
     if (names.some(n => !n || n.length > 32 || !/^[\p{L} .'-]{1,32}$/u.test(n))) {
       setError('guestError', '방문자와 동행인의 이름을 정확히 입력해주세요.'); return;
@@ -168,7 +169,8 @@
   async function refreshAvailability() {
     if (preview) return setOfflinePreview();
     if (!configured) {
-      $('availabilityMessage').textContent = '예약 서버 설정이 필요합니다. 사이트 관리자에게 문의해주세요.';
+      serverReady = false;
+      $('availabilityMessage').textContent = '시간은 선택할 수 있습니다. 실제 예약 확정은 구글 시트 연결 후 가능합니다.';
       paintSlots(); return;
     }
     try {
@@ -180,8 +182,9 @@
       if (selectedSlot && (slots[selectedSlot]?.closed || slots[selectedSlot]?.remaining < guestNames.length)) selectedSlot = '';
       paintSlots();
     } catch (error) {
+      serverReady = false;
       slots = {};
-      $('availabilityMessage').textContent = error.message;
+      $('availabilityMessage').textContent = '예약 현황을 불러오지 못했습니다. 연결 상태를 확인해주세요.';
       paintSlots();
     }
   }
@@ -189,15 +192,16 @@
     document.querySelectorAll('.slot-button').forEach(button => {
       const slot = slots[button.dataset.slot];
       const closed = !!slot && (slot.closed || slot.remaining < Math.max(guestNames.length, 1));
-      const usable = !!slot && !closed && (preview || serverReady);
-      button.disabled = !usable;
+      const missing = serverReady && !slot && !preview;
+      // 예약 서버 연결 전에도 날짜 체크 표시를 사용해 볼 수 있습니다.
+      // 실제 예약 확정은 서버 조회 및 정원 검증 후에만 가능합니다.
+      button.disabled = closed || missing;
       button.classList.toggle('is-closed', closed);
       button.setAttribute('aria-pressed', String(button.dataset.slot === selectedSlot));
-      const accessible = SLOT_LABELS[button.dataset.slot];
-      button.setAttribute('aria-label', `${accessible}${closed ? ' 마감' : slot ? ' 남은 자리 ' + slot.remaining + '명' : ' 확인 중'}`);
+      button.setAttribute('aria-label', `${SLOT_LABELS[button.dataset.slot]}${closed ? ' 마감' : slot ? ' 남은 자리 ' + slot.remaining + '명' : ' 선택'}`);
     });
-    $('confirmButton').disabled = !selectedSlot || submitting || (!serverReady && !preview) || reservationDone;
-    $('selectionSummary').textContent = selectedSlot ? `${SLOT_LABELS[selectedSlot]} · ${guestNames.length}명` : '방문 시간을 하나 선택하세요.';
+    $('confirmButton').disabled = !selectedSlot || submitting || reservationDone;
+    $('selectionSummary').textContent = selectedSlot ? `✓ ${SLOT_LABELS[selectedSlot]} · ${guestNames.length}명` : '방문 시간을 하나 선택하세요.';
   }
   document.querySelectorAll('.slot-button').forEach(button => {
     button.addEventListener('click', () => {
@@ -217,6 +221,23 @@
       $('finalSummary').textContent = `${SLOT_LABELS[selectedSlot]} · ${guestNames.length}명 (미리보기)`;
       $('noticeConfirmed').textContent = '미리보기입니다. 실제 예약은 접수되지 않았습니다.';
       showStep(4);
+      return;
+    }
+    if (!configured) {
+      setError('bookingError', '구글 예약 서버가 아직 연결되지 않았습니다. 관리자에게 문의해주세요.');
+      return;
+    }
+    if (!serverReady) {
+      await refreshAvailability();
+      if (!serverReady) {
+        setError('bookingError', '예약 현황을 확인할 수 없습니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+    }
+    if (!slots[selectedSlot] || slots[selectedSlot].closed || slots[selectedSlot].remaining < guestNames.length) {
+      setError('bookingError', '선택한 시간이 마감되었거나 잔여 인원이 부족합니다. 다른 시간을 선택해주세요.');
+      selectedSlot = '';
+      paintSlots();
       return;
     }
     submitting = true;
@@ -277,7 +298,7 @@
     reservationDone = false;
     discovered.clear();
     $('guestForm').reset();
-    document.querySelectorAll('#nameFields .field').forEach((field, index) => { if (index > 0) field.remove(); });
+    document.querySelectorAll('#extraNameFields .field').forEach(field => field.remove());
     $('addGuest').disabled = false;
     $('discoveryCount').textContent = '0';
     $('roomViewport').dataset.positioned = '';

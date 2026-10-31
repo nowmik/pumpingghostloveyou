@@ -7,9 +7,9 @@
   <meta name="description" content="저택의 초대장 · 방문 예약" />
   <title>Pumping Ghost Love You — Invitation</title>
   <link rel="preload" href="manor.webp" as="image" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=3" />
   <script src="config.js" defer></script>
-  <script src="app.js" defer></script>
+  <script src="app.js?v=3" defer></script>
 </head>
 <body>
   <main id="app" class="app">
@@ -19,8 +19,15 @@
     <section class="screen active intro-screen" data-screen="1" aria-label="저택 초대장 시작">
       <div class="start-content">
         <img class="manor-image" src="manor.webp" alt="붉은 배경 위에 그려진 오래된 저택" />
-        <button type="button" class="entry-button" id="enterButton">저택에 들어가기 <span aria-hidden="true">›</span></button>
-        <div class="small-hint">화면을 터치해 초대장을 확인하세요.</div>
+        <div class="entry-area">
+          <div class="entry-flourish" aria-hidden="true"><span></span><b>✥</b><span></span></div>
+          <button type="button" class="entry-button" id="enterButton">
+            <span class="entry-glyph" aria-hidden="true">❧</span>
+            <span class="entry-copy"><small>YOU ARE CORDIALLY INVITED</small><strong>저택에 방문하기</strong></span>
+            <span class="entry-glyph" aria-hidden="true">❧</span>
+          </button>
+          <div class="small-hint">✧ 초대장을 열려면 위 문양을 누르세요 ✧</div>
+        </div>
       </div>
     </section>
 
@@ -28,18 +35,28 @@
     <section class="screen" data-screen="2" aria-labelledby="inviteHeading" hidden>
       <div class="screen-scroll invitation-bg">
         <div class="invitation-wrap">
-          <img src="invitation.webp" class="invitation-art" alt="붉은 초대장과 흰 가면. 당신을 저택에 초대합니다." />
           <form id="guestForm" class="guest-form" novalidate>
-            <h1 id="inviteHeading">방문자의 이름을 남겨주세요.</h1>
-            <p class="field-help">저택의 명부에 기록됩니다. 동행인이 있다면 추가할 수 있습니다.</p>
-            <div id="nameFields" class="name-fields">
-              <label class="field"><span>방문자 이름 <em>01</em></span><input type="text" name="guestName" autocomplete="name" maxlength="32" placeholder="이름을 입력하세요" required /></label>
+            <div class="invitation-art-wrap">
+              <img src="invitation.webp" class="invitation-art" alt="붉은 초대장, 흰 가면, 이름을 적을 수 있는 분홍 리본. 당신을 저택에 초대합니다." />
+              <!-- 이미지 속 분홍 리본에 직접 이름을 적습니다. -->
+              <label class="ribbon-name" for="primaryGuestName">
+                <span class="sr-only">대표 예약자 이름</span>
+                <input type="text" id="primaryGuestName" name="guestName" autocomplete="name" maxlength="32" placeholder="성함을 적어주세요" required />
+              </label>
             </div>
-            <button class="add-guest" id="addGuest" type="button">+ 동행인 추가 (최대 4명)</button>
-            <label class="field"><span>연락처 <em>필수</em></span><input id="phoneInput" type="tel" name="phone" inputmode="tel" autocomplete="tel" maxlength="16" placeholder="010-1234-5678" required /></label>
-            <label class="consent"><input id="privacyConsent" type="checkbox" required /><span><strong>[필수] 개인정보 수집·이용 동의</strong><small>예약 확인과 안내를 위해 이름·전화번호·방문 일정·인원을 수집하며, 행사 종료 후 30일 이내 삭제합니다. 운영자는 실제 정책에 맞게 이 안내를 수정해야 합니다.</small></span></label>
-            <p class="inline-error" id="guestError" role="alert" hidden></p>
-            <button type="submit" class="gold-button">명부 작성 완료 <span aria-hidden="true">›</span></button>
+            <div class="guest-details">
+              <div class="ledger-heading" aria-hidden="true"><span></span> VISITOR REGISTER <span></span></div>
+              <p class="ledger-note">리본에 대표 방문자 이름을 적어주세요.<br />동행인이 있다면 아래에 추가할 수 있습니다.</p>
+              <div id="extraNameFields" class="name-fields"></div>
+              <button class="add-guest" id="addGuest" type="button"><span aria-hidden="true">✧</span> 동행인 이름 추가 <small>(최대 4명)</small></button>
+              <label class="field phone-field" for="phoneInput">
+                <span>연락처 <em>CONTACT NUMBER</em></span>
+                <input id="phoneInput" type="tel" name="phone" inputmode="tel" autocomplete="tel" maxlength="16" placeholder="010 - 0000 - 0000" required />
+              </label>
+              <label class="consent"><input id="privacyConsent" type="checkbox" required /><span><strong>[필수] 개인정보 수집·이용 동의</strong><small>예약 확인과 안내를 위해 이름·전화번호·방문 일정·인원을 수집하며, 행사 종료 후 30일 이내 삭제합니다. 운영자는 실제 정책에 맞게 이 안내를 수정해야 합니다.</small></span></label>
+              <p class="inline-error" id="guestError" role="alert" hidden></p>
+              <button type="submit" class="gold-button guest-submit"><span aria-hidden="true">✧</span> 명부를 제출하고 계속하기 <span aria-hidden="true">✧</span></button>
+            </div>
           </form>
         </div>
       </div>
@@ -51,15 +68,16 @@
         <div class="booking-art-wrap">
           <h1 id="bookingHeading" class="sr-only">어느 날짜에 방문 예정이십니까?</h1>
           <img src="steward.webp" class="steward-art" alt="촛불이 켜진 저택의 지배인. 어느 날짜에 방문 예정이십니까?" />
-          <div class="slot-hotspots" id="slotHotspots" role="group" aria-label="방문 날짜 선택">
-            <button type="button" data-slot="2026-11-14-14" class="slot-button slot-1" aria-pressed="false"><span class="sr-only">11월 14일 오후 2시</span></button>
-            <button type="button" data-slot="2026-11-14-19" class="slot-button slot-2" aria-pressed="false"><span class="sr-only">11월 14일 오후 7시</span></button>
-            <button type="button" data-slot="2026-11-15-14" class="slot-button slot-3" aria-pressed="false"><span class="sr-only">11월 15일 오후 2시</span></button>
-            <button type="button" data-slot="2026-11-15-19" class="slot-button slot-4" aria-pressed="false"><span class="sr-only">11월 15일 오후 7시</span></button>
+          <div class="slot-hotspots" id="slotHotspots" role="group" aria-label="방문 날짜 선택 · 왼쪽 체크박스를 눌러 선택하세요">
+            <button type="button" data-slot="2026-11-14-14" class="slot-button slot-1" aria-pressed="false"><span class="slot-check" aria-hidden="true"></span><span class="sr-only">11월 14일 오후 2시</span></button>
+            <button type="button" data-slot="2026-11-14-19" class="slot-button slot-2" aria-pressed="false"><span class="slot-check" aria-hidden="true"></span><span class="sr-only">11월 14일 오후 7시</span></button>
+            <button type="button" data-slot="2026-11-15-14" class="slot-button slot-3" aria-pressed="false"><span class="slot-check" aria-hidden="true"></span><span class="sr-only">11월 15일 오후 2시</span></button>
+            <button type="button" data-slot="2026-11-15-19" class="slot-button slot-4" aria-pressed="false"><span class="slot-check" aria-hidden="true"></span><span class="sr-only">11월 15일 오후 7시</span></button>
           </div>
         </div>
         <div class="booking-controls">
           <p id="availabilityMessage" class="availability-note" aria-live="polite">예약 가능 여부를 확인하고 있습니다.</p>
+          <p class="check-help">왼쪽 □ 표시를 눌러 방문 시간을 선택하세요.</p>
           <p id="selectionSummary" class="selection-summary">방문 시간을 하나 선택하세요.</p>
           <p id="bookingError" class="inline-error" role="alert" hidden></p>
           <button id="confirmButton" type="button" class="gold-button" disabled>방문 예약 확정</button>
